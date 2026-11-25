@@ -1,0 +1,8 @@
+{
+  "name": "Schullz Ink Tap",
+  "description": "Seu app de tatuagem com  Área do cliente, portfólio, desenhos disponíveis, mapa corporal da dor em 3D, tabela de preços e orçamento com acessibilidade visual.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

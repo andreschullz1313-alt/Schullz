@@ -1,0 +1,357 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isVerified() && (
+        request.auth.token.email == 'andreschullz1313@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isHexColor(val) {
+      return val is string && val.size() == 7 && val.matches('^#[0-9a-fA-F]{6}$');
+    }
+
+    function isValidSizeTierEntry(entry) {
+      return entry is map
+        && entry.keys().hasAll(['label', 'min', 'max', 'startingFrom'])
+        && entry.keys().hasOnly(['label', 'min', 'max', 'startingFrom'])
+        && entry.label is string
+        && entry.label.size() >= 1
+        && entry.label.size() <= 80
+        && entry.min is number
+        && entry.max is number
+        && entry.min >= 0
+        && entry.max >= entry.min
+        && entry.max <= 100000
+        && entry.startingFrom is bool;
+    }
+
+    function isValidSizeTierList(arr) {
+      return arr is list
+        && arr.size() >= 1
+        && arr.size() <= 12
+        && isValidSizeTierEntry(arr[0])
+        && isValidSizeTierEntry(arr[arr.size() - 1]);
+    }
+
+    function isValidPriceItemEntry(entry) {
+      return entry is map
+        && entry.keys().hasAll(['group', 'title', 'description', 'min', 'max'])
+        && entry.keys().hasOnly(['group', 'title', 'description', 'min', 'max'])
+        && entry.group is string
+        && entry.group.size() >= 1
+        && entry.group.size() <= 60
+        && entry.title is string
+        && entry.title.size() >= 1
+        && entry.title.size() <= 80
+        && entry.description is string
+        && entry.description.size() <= 240
+        && entry.min is number
+        && entry.max is number
+        && entry.min >= 0
+        && entry.max >= entry.min
+        && entry.max <= 100000;
+    }
+
+    function isValidPriceItemList(arr) {
+      return arr is list
+        && arr.size() <= 24
+        && (
+          arr.size() == 0 ||
+          (isValidPriceItemEntry(arr[0]) && isValidPriceItemEntry(arr[arr.size() - 1]))
+        );
+    }
+
+    function isValidStudioConfig(data) {
+      return data.keys().hasAll([
+          'studioName',
+          'whatsapp',
+          'instagram',
+          'publicCoupon',
+          'logoDataUrl',
+          'promoBannerDataUrl',
+          'promoBannerTitle',
+          'promoBannerMonth',
+          'apkDownloadUrl',
+          'primaryColor',
+          'accentGoldColor',
+          'bgDarkColor',
+          'fullSleeveMin',
+          'fullSleeveNote',
+          'sizeTiers',
+          'priceItems',
+          'configVersion',
+          'updatedByUid',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'studioName',
+          'whatsapp',
+          'instagram',
+          'publicCoupon',
+          'logoDataUrl',
+          'promoBannerDataUrl',
+          'promoBannerTitle',
+          'promoBannerMonth',
+          'apkDownloadUrl',
+          'primaryColor',
+          'accentGoldColor',
+          'bgDarkColor',
+          'fullSleeveMin',
+          'fullSleeveNote',
+          'sizeTiers',
+          'priceItems',
+          'configVersion',
+          'updatedByUid',
+          'updatedAt'
+        ])
+        && data.studioName is string && data.studioName.size() >= 2 && data.studioName.size() <= 60
+        && data.whatsapp is string && data.whatsapp.size() >= 10 && data.whatsapp.size() <= 15 && data.whatsapp.matches('^[0-9]{10,15}$')
+        && data.instagram is string && data.instagram.size() >= 1 && data.instagram.size() <= 40 && data.instagram.matches('^[a-zA-Z0-9._]{1,40}$')
+        && data.publicCoupon is string && data.publicCoupon.size() >= 3 && data.publicCoupon.size() <= 32 && data.publicCoupon.matches('^[A-Z0-9_-]{3,32}$')
+        && data.logoDataUrl is string && data.logoDataUrl.size() <= 350000
+        && (data.logoDataUrl == '' || data.logoDataUrl.matches('^data:image/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$'))
+        && data.promoBannerDataUrl is string && data.promoBannerDataUrl.size() <= 420000
+        && (data.promoBannerDataUrl == '' || data.promoBannerDataUrl.matches('^data:image/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$'))
+        && data.promoBannerTitle is string && data.promoBannerTitle.size() <= 80
+        && data.promoBannerMonth is string && data.promoBannerMonth.size() <= 32
+        && data.apkDownloadUrl is string && data.apkDownloadUrl.size() <= 500
+        && (data.apkDownloadUrl == '' || data.apkDownloadUrl.matches('^(https://[^\\s<>"]+|/downloads/[a-zA-Z0-9._-]+\\.apk)$'))
+        && isHexColor(data.primaryColor)
+        && isHexColor(data.accentGoldColor)
+        && isHexColor(data.bgDarkColor)
+        && data.fullSleeveMin is number && data.fullSleeveMin >= 0 && data.fullSleeveMin <= 100000
+        && data.fullSleeveNote is string && data.fullSleeveNote.size() <= 220
+        && isValidSizeTierList(data.sizeTiers)
+        && isValidPriceItemList(data.priceItems)
+        && data.configVersion is int && data.configVersion >= 1
+        && data.updatedByUid is string && data.updatedByUid.size() >= 1 && data.updatedByUid.size() <= 128 && data.updatedByUid == request.auth.uid
+        && data.updatedAt == request.time;
+    }
+
+    function isValidScheduleSlot(data, slotId) {
+      return slotId.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{4}$')
+        && data.keys().hasAll(['date', 'time', 'status', 'serviceHint', 'createdAt'])
+        && data.keys().hasOnly(['date', 'time', 'status', 'serviceHint', 'createdAt'])
+        && data.date is string && data.date.size() == 10 && data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && data.time is string && data.time.size() == 5 && data.time.matches('^[0-9]{2}:[0-9]{2}$')
+        && slotId[0:10] == data.date
+        && slotId[11:13] == data.time[0:2]
+        && slotId[13:15] == data.time[3:5]
+        && data.status is string && data.status in ['booked', 'blocked']
+        && data.serviceHint is string && data.serviceHint.size() >= 1 && data.serviceHint.size() <= 40
+        && data.createdAt is timestamp;
+    }
+
+    function isValidAppointment(data) {
+      return data.keys().hasAll([
+          'slotId',
+          'date',
+          'time',
+          'clientName',
+          'clientWhatsapp',
+          'style',
+          'bodyZone',
+          'size',
+          'notes',
+          'status',
+          'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'slotId',
+          'date',
+          'time',
+          'clientName',
+          'clientWhatsapp',
+          'style',
+          'bodyZone',
+          'size',
+          'notes',
+          'status',
+          'createdAt'
+        ])
+        && data.slotId is string && data.slotId.size() == 15 && data.slotId.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{4}$')
+        && data.date is string && data.date.size() == 10 && data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && data.time is string && data.time.size() == 5 && data.time.matches('^[0-9]{2}:[0-9]{2}$')
+        && data.slotId[0:10] == data.date
+        && data.slotId[11:13] == data.time[0:2]
+        && data.slotId[13:15] == data.time[3:5]
+        && data.clientName is string && data.clientName.size() >= 2 && data.clientName.size() <= 60
+        && data.clientWhatsapp is string && data.clientWhatsapp.size() >= 10 && data.clientWhatsapp.size() <= 15 && data.clientWhatsapp.matches('^[0-9]{10,15}$')
+        && data.style is string && data.style.size() >= 2 && data.style.size() <= 40
+        && data.bodyZone is string && data.bodyZone.size() >= 2 && data.bodyZone.size() <= 50
+        && data.size is string && data.size.size() >= 2 && data.size.size() <= 40
+        && data.notes is string && data.notes.size() <= 240
+        && data.status is string && data.status in ['pending', 'confirmed', 'cancelled']
+        && data.createdAt is timestamp;
+    }
+
+    function isValidFaqItem(data) {
+      return data.keys().hasAll([
+          'category',
+          'question',
+          'answer',
+          'order',
+          'actionTab',
+          'actionLabel',
+          'updatedByUid',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'category',
+          'question',
+          'answer',
+          'order',
+          'actionTab',
+          'actionLabel',
+          'updatedByUid',
+          'updatedAt'
+        ])
+        && data.category is string && data.category.size() >= 3 && data.category.size() <= 24 && data.category in ['cuidados', 'agendamento', 'dor', 'politicas']
+        && data.question is string && data.question.size() >= 4 && data.question.size() <= 180
+        && data.answer is string && data.answer.size() >= 4 && data.answer.size() <= 1200
+        && data.order is int && data.order >= 0 && data.order <= 500
+        && data.actionTab is string && data.actionTab.size() <= 24 && data.actionTab in ['', 'orcamento', 'agendamento', 'mapa', 'indicacao', 'preparacao', 'pos-tattoo']
+        && data.actionLabel is string && data.actionLabel.size() <= 48
+        && data.updatedByUid is string && data.updatedByUid.size() >= 1 && data.updatedByUid.size() <= 128 && data.updatedByUid == request.auth.uid
+        && data.updatedAt == request.time;
+    }
+
+    // Shared real-time studio config (public read for single 'studio' doc, verified admin write only)
+    match /app_config/{configId} {
+      allow get: if isValidId(configId) && configId == 'studio';
+      allow list: if isAdmin();
+      allow create: if isAdmin()
+        && isValidId(configId)
+        && configId == 'studio'
+        && isValidStudioConfig(incoming());
+      allow update: if isAdmin()
+        && isValidId(configId)
+        && configId == 'studio'
+        && isValidStudioConfig(incoming())
+        && incoming().configVersion >= existing().configVersion
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'studioName',
+          'whatsapp',
+          'instagram',
+          'publicCoupon',
+          'logoDataUrl',
+          'promoBannerDataUrl',
+          'promoBannerTitle',
+          'promoBannerMonth',
+          'apkDownloadUrl',
+          'primaryColor',
+          'accentGoldColor',
+          'bgDarkColor',
+          'fullSleeveMin',
+          'fullSleeveNote',
+          'sizeTiers',
+          'priceItems',
+          'configVersion',
+          'updatedByUid',
+          'updatedAt'
+        ]);
+      allow delete: if false;
+    }
+
+    // Public non-PII slot availability locks (prevents double-bookings; admin controls blocks/releases)
+    match /schedule_slots/{slotId} {
+      allow get: if isValidId(slotId) && slotId.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{4}$');
+      allow list: if resource.data.status == 'booked' || resource.data.status == 'blocked';
+      allow create: if isValidId(slotId)
+        && isValidScheduleSlot(incoming(), slotId)
+        && incoming().createdAt == request.time
+        && (incoming().status == 'booked' || isAdmin());
+      allow update: if isAdmin()
+        && isValidId(slotId)
+        && isValidScheduleSlot(incoming(), slotId)
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'serviceHint']);
+      allow delete: if isAdmin() && isValidId(slotId);
+    }
+
+    // Private client booking records (PII restricted exclusively to verified admin reads/management)
+    match /appointments/{appointmentId} {
+      allow get: if isAdmin() && isValidId(appointmentId);
+      allow list: if isAdmin();
+      allow create: if isValidId(appointmentId)
+        && isValidAppointment(incoming())
+        && incoming().createdAt == request.time
+        && (incoming().status == 'pending' || isAdmin())
+        && existsAfter(/databases/$(database)/documents/schedule_slots/$(incoming().slotId))
+        && getAfter(/databases/$(database)/documents/schedule_slots/$(incoming().slotId)).data.date == incoming().date
+        && getAfter(/databases/$(database)/documents/schedule_slots/$(incoming().slotId)).data.time == incoming().time
+        && getAfter(/databases/$(database)/documents/schedule_slots/$(incoming().slotId)).data.status == 'booked';
+      allow update: if isAdmin()
+        && isValidId(appointmentId)
+        && isValidAppointment(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status']);
+      allow delete: if isAdmin() && isValidId(appointmentId);
+    }
+
+    // Public studio FAQ items (admin-managed in real time)
+    match /faq_items/{faqId} {
+      allow get: if isValidId(faqId);
+      allow list: if resource.data.category == 'cuidados'
+        || resource.data.category == 'agendamento'
+        || resource.data.category == 'dor'
+        || resource.data.category == 'politicas';
+      allow create: if isAdmin()
+        && isValidId(faqId)
+        && isValidFaqItem(incoming());
+      allow update: if isAdmin()
+        && isValidId(faqId)
+        && isValidFaqItem(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'category',
+          'question',
+          'answer',
+          'order',
+          'actionTab',
+          'actionLabel',
+          'updatedByUid',
+          'updatedAt'
+        ]);
+      allow delete: if isAdmin() && isValidId(faqId);
+    }
+
+    // Admin lookup (no client self-escalation)
+    match /admins/{adminUid} {
+      allow get: if isSignedIn() && isValidId(adminUid) && (request.auth.uid == adminUid || isAdmin());
+      allow list: if false;
+      allow create, update, delete: if false;
+    }
+
+    // Startup connection check document
+    match /test/{docId} {
+      allow get: if isValidId(docId) && docId == 'connection';
+      allow list, create, update, delete: if false;
+    }
+  }
+}

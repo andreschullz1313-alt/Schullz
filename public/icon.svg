@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#0a0a0a"/>
+  <rect x="24" y="24" width="464" height="464" rx="92" fill="none" stroke="#F22929" stroke-width="12" stroke-opacity="0.85"/>
+  <text x="50%" y="52%" dominant-baseline="middle" text-anchor="middle" font-family="Georgia, serif" font-weight="bold" font-size="220" fill="#F22929" letter-spacing="-8">SI</text>
+  <text x="50%" y="77%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-weight="700" font-size="36" fill="#f7f4ee" letter-spacing="10">TATTOO</text>
+</svg>
